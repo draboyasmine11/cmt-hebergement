@@ -174,17 +174,35 @@ public class ReservationService {
             throw new BusinessException("Cette réservation ne peut plus être annulée");
         }
 
+        if (isOwner && !isGerantOrAdmin) {
+            if (reservation.getDateArrivee().isBefore(LocalDate.now())) {
+                throw new BusinessException("Vous ne pouvez plus annuler cette réservation car le séjour a déjà commencé. Veuillez contacter le gérant du centre.");
+            }
+        }
+
         reservation.setStatut(StatutReservation.ANNULEE);
         if (reservation.getChambre().getStatut() == StatutChambre.OCCUPEE) {
             reservation.getChambre().setStatut(StatutChambre.DISPONIBLE);
         }
         Reservation saved = reservationRepository.save(reservation);
 
+        String clientNom = current.getPrenom() + " " + current.getNom();
+        String chambreNumero = reservation.getChambre().getNumero();
+        String centreNom = reservation.getChambre().getCentre().getNom();
+
         notificationService.creerNotification(reservation.getUtilisateur(),
                 TypeNotification.RESERVATION_ANNULEE,
                 "Réservation annulée",
-                "La réservation pour la chambre " + reservation.getChambre().getNumero() + " a été annulée.",
+                "Votre réservation pour la chambre " + chambreNumero + " au centre " + centreNom + " a été annulée.",
                 saved);
+
+        if (isOwner && !isGerantOrAdmin) {
+            notificationService.notifierGerantsCentre(reservation.getChambre().getCentre().getId(),
+                    TypeNotification.RESERVATION_ANNULEE,
+                    "Annulation par un client",
+                    "Le client " + clientNom + " a annulé sa réservation (chambre " + chambreNumero + ") au centre " + centreNom + ".",
+                    saved);
+        }
 
         return EntityMapper.toReservationResponse(saved);
     }

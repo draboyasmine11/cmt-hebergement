@@ -25,4 +25,5 @@ public class CentreResponse {
     private Double distanceKm;
     private Long gerantId;
     private String gerantNom;
+    private String gerantTelephone;
 }

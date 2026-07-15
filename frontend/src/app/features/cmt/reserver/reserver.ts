@@ -1,15 +1,5 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 
-const ROOM_PHOTOS = [
-    'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=400&h=280&fit=crop',
-    'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&h=280&fit=crop',
-    'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=400&h=280&fit=crop',
-    'https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=400&h=280&fit=crop',
-    'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&h=280&fit=crop',
-    'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=400&h=280&fit=crop',
-    'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400&h=280&fit=crop',
-    'https://images.unsplash.com/photo-1591088398332-8a7791972843?w=400&h=280&fit=crop',
-];
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -61,16 +51,16 @@ import { Centre, Chambre, Tarif, TypeClient } from '@/app/core/models/cmt.models
                         <div class="col-span-12 md:col-span-6">
                             <p-card>
                                 <ng-template #header>
-                                    <div class="h-36 overflow-hidden rounded-t-xl bg-slate-100">
-                                        <img [src]="roomPhoto(ch.id)" alt="Chambre" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'" />
+                                    <div class="h-28 bg-gradient-to-br from-[#1e3a8a] to-[#00529B] flex flex-col items-center justify-center text-white rounded-t-xl">
+                                        <span class="text-2xl font-extrabold">Chambre {{ ch.numero }}</span>
+                                        @if (ch.centreNom) {
+                                            <span class="text-xs text-blue-200 mt-1">{{ ch.centreNom }}</span>
+                                        }
                                     </div>
                                 </ng-template>
-                                <ng-template #title>Chambre {{ ch.numero }}</ng-template>
+                                <ng-template #title></ng-template>
                                 <div class="flex flex-col gap-3">
                                     <p class="text-2xl font-bold text-primary mb-0">{{ tarifPrixParNuit() | number }} FCFA <span class="text-sm font-normal text-muted-color">/ nuit</span></p>
-                                    @if (ch.centreNom) {
-                                        <p class="text-sm text-muted-color"><i class="pi pi-building mr-1"></i>{{ ch.centreNom }}</p>
-                                    }
                                     <div class="flex gap-2">
                                         <p-button label="Détails" icon="pi pi-info-circle" severity="secondary" size="small" class="flex-1" (onClick)="voirDetails(ch)" pTooltip="Afficher les détails de cette chambre" tooltipPosition="top" />
                                         <p-button label="Réserver" icon="pi pi-calendar-plus" size="small" class="flex-1" (onClick)="reserver(ch)" pTooltip="Réserver cette chambre" tooltipPosition="top" />
@@ -95,11 +85,6 @@ import { Centre, Chambre, Tarif, TypeClient } from '@/app/core/models/cmt.models
                         <h3 class="text-xl font-bold text-slate-800">Chambre {{ selectedChambre()!.numero }}</h3>
                         <button class="text-slate-400 hover:text-slate-600 cursor-pointer" (click)="selectedChambre.set(null)"><i class="pi pi-times text-lg"></i></button>
                     </div>
-                    @if (selectedChambre()!.image) {
-                        <div class="mb-4 -mx-2"><img [src]="'/api/uploads/' + selectedChambre()!.image" alt="Photo" class="w-full h-40 object-cover rounded-xl border border-slate-200" /></div>
-                    } @else {
-                        <div class="mb-4 -mx-2"><img src="/logo_sonabel.jpg" alt="Photo" class="w-full h-40 object-cover rounded-xl border border-slate-200" /></div>
-                    }
                     <div class="flex flex-col gap-3 text-sm text-slate-700">
                         <div class="flex justify-between"><span class="font-semibold">Prix / nuit</span><span class="text-[#00529B] font-bold">{{ tarifPrixParNuit() | number }} FCFA</span></div>
                         @if (selectedChambre()!.centreNom) {
@@ -142,10 +127,6 @@ export class Reserver implements OnInit {
         const t = this.tarifs().find(t => t.typeClient === typeClient);
         return t?.prixParNuit ?? 0;
     });
-
-    roomPhoto(id: number): string {
-        return ROOM_PHOTOS[id % ROOM_PHOTOS.length];
-    }
 
     ngOnInit() {
         this.centreService.getAll().subscribe((c) => this.centres.set(c));

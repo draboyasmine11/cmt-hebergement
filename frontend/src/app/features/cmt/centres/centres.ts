@@ -1,7 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpContext } from '@angular/common/http';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
@@ -18,8 +17,6 @@ import { CentreService } from '@/app/core/services/centre.service';
 import { UtilisateurService } from '@/app/core/services/utilisateur.service';
 import { AuthService } from '@/app/core/services/auth.service';
 import { Centre, StatutCentre, Utilisateur } from '@/app/core/models/cmt.models';
-import { environment } from '@/environments/environment';
-import { SKIP_AUTH } from '@/app/core/interceptors/auth.interceptor';
 
 @Component({
     selector: 'app-centres',
@@ -122,17 +119,6 @@ import { SKIP_AUTH } from '@/app/core/interceptors/auth.interceptor';
                         <input [(ngModel)]="form.telephone" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00529B]/20"
                             placeholder="Ex: +226 25 30 61 00" />
                     </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-sm font-bold text-slate-500">Photo du centre <span class="text-slate-400 text-xs">(optionnel)</span></label>
-                        <input type="file" accept=".jpg,.jpeg,.png,.gif" (change)="onPhotoChange($event)"
-                            class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#00529B]/10 file:text-[#00529B] hover:file:bg-[#00529B]/20 cursor-pointer" />
-                        @if (photoPreview) {
-                            <div class="mt-2 flex items-center gap-3">
-                                <img [src]="photoPreview" alt="Aperçu" class="h-16 w-16 rounded-xl object-cover border border-slate-200" />
-                                <span class="text-xs text-slate-400">Aperçu</span>
-                            </div>
-                        }
-                    </div>
                     <div class="col-span-2 flex flex-col gap-1">
                         <label class="text-sm font-bold text-slate-700">Description <span class="text-red-500">*</span></label>
                         <textarea [(ngModel)]="form.description" rows="3"
@@ -178,7 +164,6 @@ export class Centres implements OnInit {
     private centreService = inject(CentreService);
     private utilisateurService = inject(UtilisateurService);
     private messageService = inject(MessageService);
-    private http = inject(HttpClient);
 
     centres = signal<Centre[]>([]);
     gerants = signal<Utilisateur[]>([]);
@@ -190,8 +175,6 @@ export class Centres implements OnInit {
     erreurForm = '';
     form: Partial<Centre> & { gerantId?: number } = {};
     searchQuery = signal('');
-    photoFile: File | null = null;
-    photoPreview: string | null = null;
 
     filteredCentres = computed(() => {
         const q = this.searchQuery().toLowerCase().trim();
@@ -215,8 +198,6 @@ export class Centres implements OnInit {
         this.editMode = false;
         this.form = { statut: 'ACTIF' as StatutCentre };
         this.erreurForm = '';
-        this.photoFile = null;
-        this.photoPreview = null;
         this.dialogVisible = true;
         this.utilisateurService.getAll().subscribe((u) =>
             this.gerants.set(u.filter(x => x.roles.includes('GERANT')))
@@ -228,21 +209,10 @@ export class Centres implements OnInit {
         this.selectedId = centre.id;
         this.form = { ...centre };
         this.erreurForm = '';
-        this.photoFile = null;
-        this.photoPreview = centre.image ? `/api/uploads/${centre.image}` : null;
         this.dialogVisible = true;
         this.utilisateurService.getAll().subscribe((u) =>
             this.gerants.set(u.filter(x => x.roles.includes('GERANT')))
         );
-    }
-
-    onPhotoChange(event: any) {
-        const file = event.target.files?.[0] ?? null;
-        if (!file) return;
-        this.photoFile = file;
-        const reader = new FileReader();
-        reader.onload = (e) => this.photoPreview = e.target?.result as string;
-        reader.readAsDataURL(file);
     }
 
     save() {
@@ -254,35 +224,22 @@ export class Centres implements OnInit {
         if (!this.form.gerantId && !this.editMode) { this.erreurForm = 'Veuillez associer un gérant au centre.'; return; }
         this.erreurForm = '';
         this.saving.set(true);
-        const doSave = (imageName: string | null) => {
-            const payload = { ...this.form, image: imageName || this.form.image, statut: 'ACTIF' as StatutCentre };
-            const obs = this.editMode && this.selectedId
-                ? this.centreService.update(this.selectedId, payload)
-                : this.centreService.create(payload);
-            obs.subscribe({
-                next: () => {
-                    this.saving.set(false);
-                    this.dialogVisible = false;
-                    this.load();
-                    this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Centre enregistré avec succès.' });
-                },
-                error: (err) => {
-                    this.saving.set(false);
-                    this.messageService.add({ severity: 'error', summary: 'Erreur', detail: err.error?.message || 'Échec de l\'enregistrement.' });
-                }
-            });
-        };
-        if (this.photoFile) {
-            const formData = new FormData();
-            formData.append('file', this.photoFile);
-            this.http.post<{ filename: string }>(`${environment.apiUrl}/upload`, formData, { context: new HttpContext().set(SKIP_AUTH, true) })
-                .subscribe({
-                    next: (res) => doSave(res.filename),
-                    error: () => { this.saving.set(false); this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de l\'upload de l\'image.' }); }
-                });
-        } else {
-            doSave(null);
-        }
+        const payload = { ...this.form, statut: 'ACTIF' as StatutCentre };
+        const obs = this.editMode && this.selectedId
+            ? this.centreService.update(this.selectedId, payload)
+            : this.centreService.create(payload);
+        obs.subscribe({
+            next: () => {
+                this.saving.set(false);
+                this.dialogVisible = false;
+                this.load();
+                this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Centre enregistré avec succès.' });
+            },
+            error: (err) => {
+                this.saving.set(false);
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: err.error?.message || 'Échec de l\'enregistrement.' });
+            }
+        });
     }
 
     remove(centre: Centre) {

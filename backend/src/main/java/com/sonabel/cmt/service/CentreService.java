@@ -27,11 +27,12 @@ public class CentreService {
 
     private CentreResponse enrichCentreResponse(CentreResponse response) {
         if (response == null) return null;
-        utilisateurRepository.findFirstByCentreIdAndRolesNom(response.getId(), com.sonabel.cmt.enums.RoleType.GERANT)
-            .ifPresent(gerant -> {
-                response.setGerantId(gerant.getId());
-                response.setGerantNom(gerant.getPrenom() + " " + gerant.getNom());
-            });
+            utilisateurRepository.findFirstByCentreIdAndRolesNom(response.getId(), com.sonabel.cmt.enums.RoleType.GERANT)
+                .ifPresent(gerant -> {
+                    response.setGerantId(gerant.getId());
+                    response.setGerantNom(gerant.getPrenom() + " " + gerant.getNom());
+                    response.setGerantTelephone(gerant.getTelephone());
+                });
         return response;
     }
 

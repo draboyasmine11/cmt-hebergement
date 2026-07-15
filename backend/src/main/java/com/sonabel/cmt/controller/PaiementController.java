@@ -61,7 +61,7 @@ public class PaiementController {
     }
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('GERANT')")
     @Operation(summary = "Enregistrer un paiement")
     public ResponseEntity<PaiementResponse> enregistrer(@Valid @RequestBody PaiementRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(paiementService.enregistrer(request));

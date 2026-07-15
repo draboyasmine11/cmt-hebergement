@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, effect } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { FormsModule } from '@angular/forms';
@@ -41,7 +41,7 @@ import { Centre } from '@/app/core/models/cmt.models';
                 <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 w-full">
                     <div class="max-w-2xl flex flex-col gap-5 text-white">
                         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
-                            Bienvenue à la <span class="text-[#60a5fa]">CMT</span>
+                            Bienvenue à la <span class="text-[#60a5fa]">CMT/SONABEL</span>
                         </h1>
                         <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold leading-snug text-slate-100">
                             Système de gestion des centres d'hébergement de la SONABEL
@@ -140,27 +140,20 @@ import { Centre } from '@/app/core/models/cmt.models';
                     @for (centre of centres(); track centre.id) {
                         <div class="col-span-12 md:col-span-6 lg:col-span-4">
                             <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all overflow-hidden flex flex-col h-full group">
-                                <div class="h-36 flex items-center justify-center relative overflow-hidden" [style.background-image]="'url(' + (centre.image ? '/api/uploads/' + centre.image : '/logo_sonabel.jpg') + ')'" [style.background-size]="'cover'" [style.background-position]="'center'">
-                                    <div class="absolute bottom-3 left-3">
-                                        <span class="bg-white/90 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
-                                            <i class="pi pi-bed text-primary text-[10px]"></i>
-                                            {{ centre.nombreChambres ?? 0 }} chambres
-                                        </span>
-                                    </div>
+                                <div class="h-36 bg-gradient-to-br from-[#1e3a8a] to-[#00529B] flex flex-col items-center justify-center text-white p-4">
+                                    <h4 class="text-xl font-extrabold text-center leading-tight">{{ centre.nom }}</h4>
+                                    <p class="text-sm text-blue-200 mt-1"><i class="pi pi-map-marker mr-1"></i>{{ centre.ville }}</p>
+                                    @if (centre.gerantTelephone) {
+                                        <p class="text-xs text-blue-300 mt-2 flex items-center gap-1">
+                                            <i class="pi pi-phone text-[10px]"></i> Gérant : {{ centre.gerantTelephone }}
+                                        </p>
+                                    }
                                 </div>
                                 <div class="p-5 flex flex-col gap-2 flex-grow">
                                     <div class="flex items-start justify-between gap-2">
                                     <h3 class="text-lg font-bold text-slate-800 leading-tight">{{ centre.nom }}</h3>
                                     <span class="text-primary font-bold text-sm shrink-0 whitespace-nowrap">{{ centre.ville }}</span>
                                 </div>
-                                <div class="flex items-center gap-4 text-xs text-slate-400 mt-1">
-                                        @if (centre.telephone) {
-                                            <span class="flex items-center gap-1"><i class="pi pi-phone text-[10px]"></i>{{ centre.telephone }}</span>
-                                        }
-                                        @if (centre.chambresDisponibles != null) {
-                                            <span class="flex items-center gap-1"><i class="pi pi-check-circle text-[10px] text-green-500"></i>{{ centre.chambresDisponibles }} disponibles</span>
-                                        }
-                                    </div>
                                     <div class="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between">
                                         <button routerLink="/auth/login" class="text-primary font-bold text-sm cursor-pointer hover:underline flex items-center gap-1">
                                             Réserver <i class="pi pi-arrow-right text-xs"></i>
@@ -231,12 +224,22 @@ export class Accueil implements OnInit, OnDestroy {
     dateArrivee = '';
     dateDepart = '';
 
-    dynamicStats = computed(() => [
-        { icon: 'pi pi-building', value: String(this.centres().length), label: 'Centres disponibles' },
-        { icon: 'pi pi-th-large', value: String(this.centres().reduce((s, c) => s + (c.nombreChambres ?? 0), 0)), label: 'Chambres confortables' },
+    dynamicStats = signal<{ icon: string; value: string; label: string }[]>([
+        { icon: 'pi pi-building', value: '0', label: 'Centres disponibles' },
+        { icon: 'pi pi-th-large', value: '0', label: 'Chambres confortables' },
         { icon: 'pi pi-users', value: '+100', label: 'Clients satisfaits' },
         { icon: 'pi pi-clock', value: '24/7', label: 'Service disponible' }
     ]);
+
+    private _ = effect(() => {
+        const c = this.centres();
+        this.dynamicStats.set([
+            { icon: 'pi pi-building', value: String(c.length), label: 'Centres disponibles' },
+            { icon: 'pi pi-th-large', value: String(c.reduce((s, x) => s + (x.nombreChambres ?? 0), 0)), label: 'Chambres confortables' },
+            { icon: 'pi pi-users', value: '+100', label: 'Clients satisfaits' },
+            { icon: 'pi pi-clock', value: '24/7', label: 'Service disponible' }
+        ]);
+    });
 
     readonly features = [
         { icon: 'pi pi-building', title: "Centres d'hébergement", description: 'Consultez la liste de tous nos centres disponibles' },

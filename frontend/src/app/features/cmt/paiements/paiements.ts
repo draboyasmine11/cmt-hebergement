@@ -32,7 +32,7 @@ import { ModePaiement, Paiement, Reservation } from '@/app/core/models/cmt.model
                     <h1 class="text-2xl font-extrabold text-slate-800">{{ auth.isClient() ? 'Mes paiements' : 'Encaissements' }}</h1>
                     <p class="text-sm text-slate-500 mt-1">{{ auth.isClient() ? 'Historique de vos paiements et factures.' : 'Suivi des paiements et encaissements effectués.' }}</p>
                 </div>
-                @if (auth.isAdmin()) {
+                @if (auth.isGerant()) {
                     <button (click)="openDialog()" pTooltip="Enregistrer un nouveau paiement" tooltipPosition="left" class="flex items-center gap-2 px-4 py-2.5 bg-[#00529B] hover:bg-[#00407a] text-white rounded-xl text-sm font-bold cursor-pointer">
                         <i class="pi pi-wallet"></i> Enregistrer un paiement
                     </button>
@@ -70,7 +70,32 @@ import { ModePaiement, Paiement, Reservation } from '@/app/core/models/cmt.model
                 </div>
             </div>
 
-            <!-- Tableau -->
+            <!-- Bilan mensuel pour l'admin -->
+            @if (auth.isAdmin()) {
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-slate-100">
+                        <h3 class="text-lg font-bold text-slate-800">Bilan mensuel des encaissements</h3>
+                    </div>
+                    <p-table [value]="bilanMensuel()" [paginator]="true" [rows]="12">
+                        <ng-template #header>
+                            <tr><th>Mois</th><th>Année</th><th>Montant total</th><th>Nombre d'encaissements</th></tr>
+                        </ng-template>
+                        <ng-template #body let-b>
+                            <tr>
+                                <td class="font-semibold">{{ moisLabel(b.mois) }}</td>
+                                <td>{{ b.annee }}</td>
+                                <td class="font-bold text-slate-800">{{ b.montant | number }} FCFA</td>
+                                <td>{{ b.nombre }}</td>
+                            </tr>
+                        </ng-template>
+                        <ng-template #emptymessage>
+                            <tr><td colspan="4" class="text-center py-8 text-slate-400">Aucun encaissement enregistré</td></tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            }
+
+            <!-- Tableau détaillé -->
             <p-toolbar styleClass="mb-4">
                 <ng-template #end>
                     <p-iconfield iconPosition="left">
@@ -183,6 +208,24 @@ export class Paiements implements OnInit {
             (p.reference || '').toLowerCase().includes(q)
         );
     });
+
+    bilanMensuel = computed(() => {
+        const map = new Map<string, { mois: number; annee: number; montant: number; nombre: number }>();
+        for (const p of this.paiements()) {
+            const d = new Date(p.datePaiement);
+            const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+            const entry = map.get(key) || { mois: d.getMonth() + 1, annee: d.getFullYear(), montant: 0, nombre: 0 };
+            entry.montant += p.montant;
+            entry.nombre++;
+            map.set(key, entry);
+        }
+        return Array.from(map.values()).sort((a, b) => b.annee - a.annee || b.mois - a.mois);
+    });
+
+    moisLabel(m: number): string {
+        const mois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+        return mois[m - 1] || m.toString();
+    }
 
     isMobileMoney() {
         return ['ORANGE_MONEY','MOOV_MONEY','WAVE','CORIS_MONEY','TELECEL_MONEY'].includes(this.form.modePaiement ?? '');

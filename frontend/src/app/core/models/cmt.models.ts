@@ -84,6 +84,7 @@ export interface Centre {
     distanceKm?: number;
     gerantId?: number;
     gerantNom?: string;
+    gerantTelephone?: string;
 }
 
 export interface Chambre {

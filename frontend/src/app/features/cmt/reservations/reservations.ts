@@ -82,7 +82,7 @@ import { ModePaiement, Reservation, StatutReservation } from '@/app/core/models/
                                         <p-button label="Refuser" icon="pi pi-times" severity="danger" size="small" (onClick)="ouvrirRefus(r)" pTooltip="Refuser la réservation" tooltipPosition="top" />
                                     }
                                     @if (r.statut === 'VALIDEE') {
-                                        @if (!r.payee) {
+                                        @if (!r.payee && auth.isGerant()) {
                                             <p-button label="Arrêter le séjour" icon="pi pi-stop" size="small" severity="warn" (onClick)="ouvrirPaiement(r)" pTooltip="Enregistrer le paiement et clôturer le séjour" tooltipPosition="top" />
                                         }
                                         @if (r.payee) {
@@ -97,7 +97,7 @@ import { ModePaiement, Reservation, StatutReservation } from '@/app/core/models/
                                     @if (r.payee) {
                                         <p-button icon="pi pi-file-pdf" size="small" [text]="true" (onClick)="facture(r)" pTooltip="Télécharger ma facture PDF" tooltipPosition="top" />
                                     }
-                                    @if (r.statut === 'EN_ATTENTE' || r.statut === 'VALIDEE') {
+                                    @if ((r.statut === 'EN_ATTENTE' || r.statut === 'VALIDEE') && r.dateArrivee >= today) {
                                         <p-button icon="pi pi-ban" severity="warn" [rounded]="true" [text]="true" (onClick)="annuler(r)" pTooltip="Annuler ma réservation" tooltipPosition="top" />
                                     }
                                 }
@@ -253,6 +253,10 @@ export class Reservations implements OnInit {
         { label: 'Refusée', value: 'REFUSEE' },
         { label: 'Annulée', value: 'ANNULEE' }
     ];
+
+    get today(): string {
+        return new Date().toISOString().split('T')[0];
+    }
 
     filteredReservations = computed(() => {
         let list = this.reservations();
