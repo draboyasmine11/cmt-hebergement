@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DatePickerModule } from 'primeng/datepicker';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
@@ -22,7 +23,7 @@ import { ModePaiement, Paiement, Reservation } from '@/app/core/models/cmt.model
     selector: 'app-paiements',
     standalone: true,
     providers: [MessageService],
-    imports: [CommonModule, FormsModule, TableModule, ButtonModule, DialogModule, InputNumberModule, InputTextModule, ToastModule, SelectModule, ToolbarModule, IconFieldModule, InputIconModule, TooltipModule],
+    imports: [CommonModule, FormsModule, TableModule, ButtonModule, DialogModule, InputNumberModule, InputTextModule, ToastModule, SelectModule, ToolbarModule, IconFieldModule, InputIconModule, TooltipModule, DatePickerModule],
     template: `
         <p-toast />
         <div class="flex flex-col gap-6">
@@ -176,6 +177,10 @@ import { ModePaiement, Paiement, Reservation } from '@/app/core/models/cmt.model
                     </div>
                 }
                 <div class="flex flex-col gap-1">
+                    <label class="text-sm font-semibold text-slate-700">Date de sortie réelle <span class="text-slate-400 font-normal">(si différente de la date prévue)</span></label>
+                    <p-datepicker [(ngModel)]="form.dateSortieReelle" dateFormat="dd/mm/yy" [showIcon]="true" placeholder="Laisser vide si sortie normale" styleClass="w-full" />
+                </div>
+                <div class="flex flex-col gap-1">
                     <label class="text-sm font-semibold text-slate-700">Référence (optionnel)</label>
                     <input pInputText class="w-full" [(ngModel)]="form.reference" placeholder="N° de reçu, référence chèque..." />
                 </div>
@@ -196,7 +201,7 @@ export class Paiements implements OnInit {
     paiements = signal<Paiement[]>([]);
     reservationsValidees = signal<{ label: string; value: number }[]>([]);
     dialogVisible = false;
-    form: { reservationId?: number; montant?: number; modePaiement?: ModePaiement; reference?: string; telephone?: string } = {};
+    form: { reservationId?: number; montant?: number; modePaiement?: ModePaiement; reference?: string; telephone?: string; dateSortieReelle?: Date } = {};
     searchQuery = signal('');
 
     filteredPaiements = computed(() => {
@@ -277,13 +282,17 @@ export class Paiements implements OnInit {
 
     save() {
         if (!this.form.reservationId || !this.form.montant || !this.form.modePaiement) return;
+        const dateSortie = this.form.dateSortieReelle
+            ? this.form.dateSortieReelle.toISOString().split('T')[0]
+            : undefined;
         this.paiementService.enregistrer({
             reservationId: this.form.reservationId,
             montant: this.form.montant,
             modePaiement: this.isMobileMoney() ? 'MOBILE_MONEY' : this.form.modePaiement,
             reference: this.isMobileMoney()
                 ? `${this.modeLabel(this.form.modePaiement!)} - ${this.form.telephone ?? ''}`
-                : this.form.reference
+                : this.form.reference,
+            dateSortieReelle: dateSortie
         }).subscribe({
             next: () => { this.dialogVisible = false; this.load(); this.messageService.add({ severity: 'success', summary: 'Paiement enregistré' }); },
             error: (e) => this.messageService.add({ severity: 'error', detail: e.error?.message })

@@ -1,5 +1,6 @@
 package com.sonabel.cmt.service;
 
+import com.sonabel.cmt.dto.EmailData;
 import com.sonabel.cmt.dto.response.DemandeInscriptionResponse;
 import com.sonabel.cmt.entity.Utilisateur;
 import com.sonabel.cmt.enums.StatutCompte;
@@ -44,7 +45,7 @@ public class ValidationInscriptionService {
                 TypeNotification.COMPTE_APPROUVE,
                 "Compte approuvé",
                 "Votre compte CMT-SONABEL a été approuvé. Vous pouvez dès à présent vous connecter.",
-                null);
+                null, null);
 
         return toDemandeResponse(saved);
     }
@@ -67,7 +68,7 @@ public class ValidationInscriptionService {
                 TypeNotification.COMPTE_REJETE,
                 "Compte rejeté",
                 "Votre demande d'inscription a été rejetée. Motif : " + (motif != null ? motif : "Non spécifié"),
-                null);
+                null, new com.sonabel.cmt.dto.EmailData(null, null, null, null, 0, motif));
 
         return toDemandeResponse(saved);
     }

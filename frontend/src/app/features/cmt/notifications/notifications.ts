@@ -48,9 +48,9 @@ import { Notification } from '@/app/core/models/cmt.models';
                                     <button
                                         class="mt-2 text-xs font-bold text-[#00529B] hover:underline cursor-pointer flex items-center gap-1"
                                         (click)="voirReservation(n)"
-                                        pTooltip="Accéder à ma réservation" tooltipPosition="right">
+                                        pTooltip="Accéder à la réservation" tooltipPosition="right">
                                         <i class="pi pi-arrow-right text-[10px]"></i>
-                                        Voir ma réservation
+                                        Voir la réservation
                                     </button>
                                 }
                                 @if (n.typeNotification === 'NOUVELLE_DEMANDE_INSCRIPTION') {

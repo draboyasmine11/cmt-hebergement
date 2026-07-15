@@ -1,5 +1,6 @@
 package com.sonabel.cmt.service;
 
+import com.sonabel.cmt.dto.EmailData;
 import com.sonabel.cmt.dto.request.ReservationRequest;
 import com.sonabel.cmt.dto.response.ReservationResponse;
 import com.sonabel.cmt.entity.Chambre;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -98,22 +100,31 @@ public class ReservationService {
 
         Reservation saved = reservationRepository.save(reservation);
 
+        String fmt = "dd/MM/yyyy";
+        EmailData emailData = EmailData.of(
+                chambre.getNumero(),
+                chambre.getCentre().getNom(),
+                request.getDateArrivee().format(DateTimeFormatter.ofPattern(fmt)),
+                request.getDateDepart().format(DateTimeFormatter.ofPattern(fmt)),
+                montant.doubleValue()
+        );
+
         notificationService.creerNotification(client, TypeNotification.NOUVELLE_RESERVATION,
                 "Réservation en attente",
                 "Votre réservation pour la chambre " + chambre.getNumero() + " est en attente de validation.",
-                saved);
+                saved, emailData);
 
         notificationService.notifierGerantsCentre(chambre.getCentre().getId(),
                 TypeNotification.NOUVELLE_RESERVATION,
                 "Nouvelle réservation",
                 client.getPrenom() + " " + client.getNom() + " a demandé la chambre " + chambre.getNumero(),
-                saved);
+                saved, emailData);
 
         notificationService.notifierAdmins(
                 TypeNotification.NOUVELLE_RESERVATION,
                 "Nouvelle réservation",
                 client.getPrenom() + " " + client.getNom() + " a réservé la chambre " + chambre.getNumero() + " au centre " + chambre.getCentre().getNom(),
-                saved);
+                saved, emailData);
 
         return EntityMapper.toReservationResponse(saved);
     }
@@ -131,11 +142,20 @@ public class ReservationService {
         reservation.getChambre().setStatut(StatutChambre.OCCUPEE);
         Reservation saved = reservationRepository.save(reservation);
 
+        String fmt = "dd/MM/yyyy";
+        EmailData emailData = EmailData.of(
+                reservation.getChambre().getNumero(),
+                reservation.getChambre().getCentre().getNom(),
+                reservation.getDateArrivee().format(DateTimeFormatter.ofPattern(fmt)),
+                reservation.getDateDepart().format(DateTimeFormatter.ofPattern(fmt)),
+                reservation.getMontantTotal() != null ? reservation.getMontantTotal().doubleValue() : 0
+        );
+
         notificationService.creerNotification(reservation.getUtilisateur(),
                 TypeNotification.RESERVATION_VALIDEE,
                 "Réservation validée",
                 "Votre réservation pour la chambre " + reservation.getChambre().getNumero() + " a été validée.",
-                saved);
+                saved, emailData);
 
         return EntityMapper.toReservationResponse(saved);
     }
@@ -151,11 +171,21 @@ public class ReservationService {
         reservation.setMotifRejet(motifRejet);
         Reservation saved = reservationRepository.save(reservation);
 
+        String fmt = "dd/MM/yyyy";
+        EmailData emailData = EmailData.ofRefus(
+                reservation.getChambre().getNumero(),
+                reservation.getChambre().getCentre().getNom(),
+                reservation.getDateArrivee().format(DateTimeFormatter.ofPattern(fmt)),
+                reservation.getDateDepart().format(DateTimeFormatter.ofPattern(fmt)),
+                reservation.getMontantTotal() != null ? reservation.getMontantTotal().doubleValue() : 0,
+                motifRejet
+        );
+
         notificationService.creerNotification(reservation.getUtilisateur(),
                 TypeNotification.RESERVATION_REFUSEE,
                 "Réservation refusée",
                 "Votre réservation pour la chambre " + reservation.getChambre().getNumero() + " a été refusée. Motif : " + motifRejet,
-                saved);
+                saved, emailData);
 
         return EntityMapper.toReservationResponse(saved);
     }
@@ -190,18 +220,20 @@ public class ReservationService {
         String chambreNumero = reservation.getChambre().getNumero();
         String centreNom = reservation.getChambre().getCentre().getNom();
 
+        EmailData emailData = EmailData.of(chambreNumero, centreNom, "", "", 0);
+
         notificationService.creerNotification(reservation.getUtilisateur(),
                 TypeNotification.RESERVATION_ANNULEE,
                 "Réservation annulée",
                 "Votre réservation pour la chambre " + chambreNumero + " au centre " + centreNom + " a été annulée.",
-                saved);
+                saved, emailData);
 
         if (isOwner && !isGerantOrAdmin) {
             notificationService.notifierGerantsCentre(reservation.getChambre().getCentre().getId(),
                     TypeNotification.RESERVATION_ANNULEE,
                     "Annulation par un client",
                     "Le client " + clientNom + " a annulé sa réservation (chambre " + chambreNumero + ") au centre " + centreNom + ".",
-                    saved);
+                    saved, emailData);
         }
 
         return EntityMapper.toReservationResponse(saved);
@@ -240,7 +272,7 @@ public class ReservationService {
     }
 
     private Reservation getById(Long id) {
-        return reservationRepository.findById(id)
+        return reservationRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Réservation introuvable"));
     }
 

@@ -27,6 +27,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM Reservation r
             WHERE r.chambre.id = :chambreId
             AND r.statut IN ('EN_ATTENTE', 'VALIDEE')
+            AND r.paiement IS NULL
             AND r.dateArrivee < :dateDepart
             AND r.dateDepart > :dateArrivee
             AND (:excludeId IS NULL OR r.id <> :excludeId)
@@ -63,4 +64,13 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             ORDER BY r.dateArrivee DESC
             """)
     List<Reservation> findActiveByChambreId(@Param("chambreId") Long chambreId, @Param("aujourdhui") LocalDate aujourdhui);
+
+    @Query("""
+            SELECT r FROM Reservation r
+            JOIN FETCH r.chambre ch
+            JOIN FETCH ch.centre
+            JOIN FETCH r.utilisateur
+            WHERE r.id = :id
+            """)
+    java.util.Optional<Reservation> findByIdWithDetails(@Param("id") Long id);
 }

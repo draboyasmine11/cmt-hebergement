@@ -63,7 +63,9 @@ public class ChambreService {
 
     public List<ChambreResponse> findDisponibles(Long centreId, LocalDate arrivee, LocalDate depart) {
         return chambreRepository.findByCentreId(centreId).stream()
+                // Exclure uniquement les chambres en maintenance
                 .filter(ch -> ch.getStatut() != StatutChambre.MAINTENANCE)
+                // Exclure les chambres avec une réservation EN_ATTENTE ou VALIDEE qui chevauche la période
                 .filter(ch -> !reservationRepository.existsChevauchement(ch.getId(), arrivee, depart, null))
                 .map(ch -> EntityMapper.toChambreResponse(ch, true, null, null, null))
                 .toList();

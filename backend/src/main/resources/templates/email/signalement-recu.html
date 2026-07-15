@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouveau signalement</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; padding: 20px; margin: 0; }
+        .container { max-width: 600px; margin: 30px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .header { padding: 30px; text-align: center; background: linear-gradient(135deg, #1e3a8a, #00529B); }
+        .header h2 { color: #ffffff; margin: 0; font-size: 22px; }
+        .body { padding: 30px; color: #333333; line-height: 1.6; }
+        .details { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .details td { padding: 10px 12px; border-bottom: 1px solid #e9ecef; vertical-align: top; }
+        .details td:first-child { font-weight: 600; color: #00529B; width: 25%; background-color: #f8f9fa; }
+        .description { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; line-height: 1.6; }
+        .footer { padding: 20px 30px; background: #f8f9fa; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e9ecef; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2>Nouveau signalement</h2>
+    </div>
+    <div class="body">
+        <p>Un nouveau signalement a été soumis via la plateforme.</p>
+        <table class="details">
+            <tr><td>Objet</td><td th:text="${objet}">Objet du signalement</td></tr>
+            <tr><td>De</td><td th:text="${email}">email@exemple.com</td></tr>
+        </table>
+        <p><strong>Description :</strong></p>
+        <div class="description" th:text="${description}">Description du signalement...</div>
+    </div>
+    <div class="footer">
+        <p>Ceci est un message automatique, merci de ne pas y répondre.</p>
+        <p>Service Social - CMT SONABEL</p>
+    </div>
+</div>
+</body>
+</html>

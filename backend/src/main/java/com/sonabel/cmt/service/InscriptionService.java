@@ -67,7 +67,7 @@ public class InscriptionService {
                 TypeNotification.NOUVELLE_DEMANDE_INSCRIPTION,
                 "Nouvelle demande d'inscription",
                 saved.getPrenom() + " " + saved.getNom() + " (Agent SONABEL) a soumis une demande d'inscription.",
-                null);
+                null, null);
         return EntityMapper.toUtilisateurResponse(saved);
     }
 
@@ -103,7 +103,7 @@ public class InscriptionService {
                 TypeNotification.NOUVELLE_DEMANDE_INSCRIPTION,
                 "Nouvelle demande d'inscription",
                 saved.getPrenom() + " " + saved.getNom() + " (Retraité SONABEL) a soumis une demande d'inscription.",
-                null);
+                null, null);
         return EntityMapper.toUtilisateurResponse(saved);
     }
 
@@ -140,7 +140,7 @@ public class InscriptionService {
                 TypeNotification.NOUVELLE_DEMANDE_INSCRIPTION,
                 "Nouvelle demande d'inscription",
                 saved.getPrenom() + " " + saved.getNom() + " (Client Externe) a soumis une demande d'inscription.",
-                null);
+                null, null);
         return EntityMapper.toUtilisateurResponse(saved);
     }
 

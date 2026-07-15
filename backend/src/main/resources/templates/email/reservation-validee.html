@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réservation validée</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; padding: 20px; margin: 0; }
+        .container { max-width: 600px; margin: 30px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .header { padding: 30px; text-align: center; background: linear-gradient(135deg, #1e8a3a, #28a745); }
+        .header .icon { font-size: 48px; color: #ffffff; margin-bottom: 10px; }
+        .header h2 { color: #ffffff; margin: 0; font-size: 22px; }
+        .body { padding: 30px; color: #333333; line-height: 1.6; }
+        .info-box { background: #f0fff4; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .details { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .details td { padding: 10px 12px; border-bottom: 1px solid #e9ecef; }
+        .details td:first-child { font-weight: 600; color: #00529B; width: 40%; background-color: #f8f9fa; }
+        .footer { padding: 20px 30px; background: #f8f9fa; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e9ecef; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="icon">&#10003;</div>
+        <h2>Réservation validée</h2>
+    </div>
+    <div class="body">
+        <p>Bonjour <strong th:text="${prenom}">Prénom</strong>,</p>
+        <div class="info-box">
+            <p style="margin:0;">Votre réservation a été <strong style="color:#28a745;">validée</strong> par le gérant du centre.</p>
+        </div>
+        <table class="details">
+            <tr><td>Chambre</td><td th:text="${chambre}">N° 101</td></tr>
+            <tr><td>Centre</td><td th:text="${centre}">Nom du centre</td></tr>
+            <tr><td>Date d'arrivée</td><td th:text="${arrivee}">01/01/2025</td></tr>
+            <tr><td>Date de départ</td><td th:text="${depart}">05/01/2025</td></tr>
+            <tr><td>Montant total</td><td><strong th:text="${montant} + ' FCFA'">50 000 FCFA</strong></td></tr>
+        </table>
+        <p>Nous vous souhaitons un excellent séjour. Pour toute information, contactez directement le centre d'hébergement.</p>
+    </div>
+    <div class="footer">
+        <p>Ceci est un message automatique, merci de ne pas y répondre.</p>
+        <p>Service Social - CMT SONABEL</p>
+    </div>
+</div>
+</body>
+</html>
