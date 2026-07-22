@@ -69,12 +69,23 @@ public class PaiementController {
 
     @GetMapping("/facture/{reservationId}")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Générer une facture PDF")
+    @Operation(summary = "Générer un reçu PDF")
     public ResponseEntity<byte[]> genererFacture(@PathVariable Long reservationId) {
         byte[] pdf = factureService.genererFacture(reservationId);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=facture-" + reservationId + ".pdf")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=recu-" + reservationId + ".pdf")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    @GetMapping("/excel/{centreId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERANT')")
+    @Operation(summary = "Exporter les reçus d'un centre en Excel")
+    public ResponseEntity<byte[]> exporterExcel(@PathVariable Long centreId) {
+        byte[] excel = factureService.exporterExcel(centreId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=recus-centre-" + centreId + ".xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(excel);
     }
 }

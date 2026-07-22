@@ -19,13 +19,13 @@ import { Paiement } from '@/app/core/models/cmt.models';
     template: `
         <p-toast />
         <div class="card">
-            <h2 class="text-2xl font-semibold mb-4">Mes factures</h2>
+            <h2 class="text-2xl font-semibold mb-4">Mes reçus</h2>
 
             <div class="grid grid-cols-12 gap-4 mb-4">
                 <div class="col-span-12 sm:col-span-6">
                     <p-card>
                         <div class="text-center">
-                            <p class="text-sm text-slate-500">Total factures</p>
+                            <p class="text-sm text-slate-500">Total reçus</p>
                             <p class="text-3xl font-bold text-[#00529B]">{{ totalFactures() }}</p>
                         </div>
                     </p-card>
@@ -43,8 +43,8 @@ import { Paiement } from '@/app/core/models/cmt.models';
             @if (factures().length === 0) {
                 <div class="text-center py-8 text-slate-400">
                     <i class="pi pi-file-pdf text-5xl mb-3 block"></i>
-                    <p class="text-lg">Aucune facture trouvée</p>
-                    <p class="text-sm">Vous n'avez aucune facture pour le moment.</p>
+                    <p class="text-lg">Aucun reçu trouvé</p>
+                    <p class="text-sm">Vous n'avez aucun reçu pour le moment.</p>
                 </div>
             } @else {
                 <p-table [value]="factures()" [paginator]="true" [rows]="10" dataKey="id">
@@ -69,8 +69,8 @@ import { Paiement } from '@/app/core/models/cmt.models';
                             <td><p-tag value="Payée" severity="success" /></td>
                             <td>
                                 <div class="flex gap-1 flex-wrap items-center">
-                                    <p-button label="Voir" icon="pi pi-eye" size="small" [text]="true" (onClick)="voirDetail(f)" pTooltip="Voir les détails de cette facture" tooltipPosition="top" />
-                                    <p-button label="Télécharger" icon="pi pi-download" size="small" [text]="true" severity="success" (onClick)="telechargerFacture(f)" pTooltip="Télécharger la facture en PDF" tooltipPosition="top" />
+                                    <p-button label="Voir" icon="pi pi-eye" size="small" [text]="true" (onClick)="voirDetail(f)" pTooltip="Voir les détails de ce reçu" tooltipPosition="top" />
+                                    <p-button label="Télécharger" icon="pi pi-download" size="small" [text]="true" severity="success" (onClick)="telechargerRecu(f)" pTooltip="Télécharger le reçu en PDF" tooltipPosition="top" />
                                 </div>
                             </td>
                         </tr>
@@ -79,12 +79,12 @@ import { Paiement } from '@/app/core/models/cmt.models';
             }
         </div>
 
-        <p-dialog [(visible)]="dialogVisible" header="Détails de la facture" [modal]="true" [style]="{width: '450px'}">
+        <p-dialog [(visible)]="dialogVisible" header="Détails du reçu" [modal]="true" [style]="{width: '450px'}">
             @if (factureSelectionnee()) {
                 <div class="flex flex-col gap-3 pt-2">
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-slate-500">Facture #{{ factureSelectionnee()!.id }}</span>
+                            <span class="text-sm text-slate-500">Reçu #{{ factureSelectionnee()!.id }}</span>
                             <p-tag value="Payée" severity="success" />
                         </div>
                         <div class="space-y-2 text-sm">
@@ -110,7 +110,7 @@ import { Paiement } from '@/app/core/models/cmt.models';
             }
             <ng-template #footer>
                 <p-button label="Fermer" [text]="true" (onClick)="dialogVisible = false" pTooltip="Fermer cette fenêtre" tooltipPosition="top" />
-                <p-button label="Télécharger le PDF" icon="pi pi-download" severity="success" (onClick)="telechargerFacture(factureSelectionnee()!)" pTooltip="Télécharger la facture en PDF" tooltipPosition="top" />
+                <p-button label="Télécharger le PDF" icon="pi pi-download" severity="success" (onClick)="telechargerRecu(factureSelectionnee()!)" pTooltip="Télécharger le reçu en PDF" tooltipPosition="top" />
             </ng-template>
         </p-dialog>
     `
@@ -160,12 +160,12 @@ export class MesFactures implements OnInit {
         this.dialogVisible = true;
     }
 
-    telechargerFacture(f: any) {
+    telechargerRecu(f: any) {
         this.paiementService.telechargerFacture(f.reservationId).subscribe((blob) => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `facture-${f.id}.pdf`;
+            a.download = `recu-${f.id}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         });

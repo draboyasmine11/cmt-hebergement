@@ -82,11 +82,11 @@ import { ModePaiement, Reservation, StatutReservation } from '@/app/core/models/
                                         <p-button label="Refuser" icon="pi pi-times" severity="danger" size="small" (onClick)="ouvrirRefus(r)" pTooltip="Refuser la réservation" tooltipPosition="top" />
                                     }
                                     @if (r.statut === 'VALIDEE') {
-                                        @if (!r.payee && auth.isGerant()) {
+                                        @if (!r.payee && (auth.isGerant() || auth.isAdmin())) {
                                             <p-button label="Arrêter le séjour" icon="pi pi-stop" size="small" severity="warn" (onClick)="ouvrirPaiement(r)" pTooltip="Enregistrer le paiement et clôturer le séjour" tooltipPosition="top" />
                                         }
                                         @if (r.payee) {
-                                            <p-button label="Facture" icon="pi pi-file-pdf" size="small" (onClick)="facture(r)" pTooltip="Télécharger la facture PDF" tooltipPosition="top" />
+                                            <p-button label="Reçu" icon="pi pi-file-pdf" size="small" (onClick)="recu(r)" pTooltip="Télécharger le reçu PDF" tooltipPosition="top" />
                                         }
                                     }
                                     @if (r.statut === 'REFUSEE' || r.statut === 'ANNULEE') {
@@ -95,7 +95,7 @@ import { ModePaiement, Reservation, StatutReservation } from '@/app/core/models/
                                 }
                                 @if (auth.isClient()) {
                                     @if (r.payee) {
-                                        <p-button icon="pi pi-file-pdf" size="small" [text]="true" (onClick)="facture(r)" pTooltip="Télécharger ma facture PDF" tooltipPosition="top" />
+                                        <p-button icon="pi pi-file-pdf" size="small" [text]="true" (onClick)="recu(r)" pTooltip="Télécharger mon reçu PDF" tooltipPosition="top" />
                                     }
                                     @if ((r.statut === 'EN_ATTENTE' || r.statut === 'VALIDEE') && r.dateArrivee >= today) {
                                         <p-button icon="pi pi-ban" severity="warn" [rounded]="true" [text]="true" (onClick)="annuler(r)" pTooltip="Annuler ma réservation" tooltipPosition="top" />
@@ -424,14 +424,27 @@ export class Reservations implements OnInit {
         });
     }
 
-    facture(r: Reservation) {
-        this.paiementService.telechargerFacture(r.id).subscribe((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `facture-${r.id}.pdf`;
-            a.click();
-            URL.revokeObjectURL(url);
+    recu(r: Reservation) {
+        this.paiementService.telechargerFacture(r.id).subscribe({
+            next: (blob) => {
+                if (!blob || blob.size === 0) {
+                    this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Le reçu est vide ou introuvable.' });
+                    return;
+                }
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `recu-${r.id}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                this.messageService.add({ severity: 'success', summary: 'Reçu téléchargé', detail: `Le reçu de la réservation #${r.id} a été téléchargé.` });
+            },
+            error: (e) => {
+                const msg = e?.error?.message || e?.message || 'Impossible de télécharger le reçu.';
+                this.messageService.add({ severity: 'error', summary: 'Erreur PDF', detail: msg });
+            }
         });
     }
 }

@@ -121,6 +121,9 @@ public final class EntityMapper {
                 .reservationId(p.getReservation().getId())
                 .clientNom(p.getReservation().getUtilisateur().getPrenom() + " " +
                         p.getReservation().getUtilisateur().getNom())
+                .gerantNom(p.getEnregistrePar() != null
+                        ? p.getEnregistrePar().getPrenom() + " " + p.getEnregistrePar().getNom()
+                        : "-")
                 .chambreNumero(p.getReservation().getChambre().getNumero())
                 .chambreType(p.getReservation().getChambre().getType())
                 .dateSortieReelle(p.getReservation().getDateSortieReelle())

@@ -31,7 +31,7 @@ import { ModePaiement, Paiement, Reservation } from '@/app/core/models/cmt.model
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-extrabold text-slate-800">{{ auth.isClient() ? 'Mes paiements' : 'Encaissements' }}</h1>
-                    <p class="text-sm text-slate-500 mt-1">{{ auth.isClient() ? 'Historique de vos paiements et factures.' : 'Suivi des paiements et encaissements effectués.' }}</p>
+                    <p class="text-sm text-slate-500 mt-1">{{ auth.isClient() ? 'Historique de vos paiements et reçus.' : 'Suivi des paiements et encaissements effectués.' }}</p>
                 </div>
                 @if (auth.isGerant()) {
                     <button (click)="openDialog()" pTooltip="Enregistrer un nouveau paiement" tooltipPosition="left" class="flex items-center gap-2 px-4 py-2.5 bg-[#00529B] hover:bg-[#00407a] text-white rounded-xl text-sm font-bold cursor-pointer">
@@ -71,11 +71,15 @@ import { ModePaiement, Paiement, Reservation } from '@/app/core/models/cmt.model
                 </div>
             </div>
 
-            <!-- Bilan mensuel pour l'admin -->
-            @if (auth.isAdmin()) {
+            <!-- Bilan mensuel pour admin et gérant -->
+            @if (auth.isAdmin() || auth.isGerant()) {
                 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div class="p-4 border-b border-slate-100">
+                    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
                         <h3 class="text-lg font-bold text-slate-800">Bilan mensuel des encaissements</h3>
+                        <button (click)="exportBilanExcel()" pTooltip="Exporter en Excel" tooltipPosition="left"
+                            class="flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold cursor-pointer">
+                            <i class="pi pi-file-excel"></i> Exporter Excel
+                        </button>
                     </div>
                     <p-table [value]="bilanMensuel()" [paginator]="true" [rows]="12">
                         <ng-template #header>
@@ -101,19 +105,28 @@ import { ModePaiement, Paiement, Reservation } from '@/app/core/models/cmt.model
                 <ng-template #end>
                     <p-iconfield iconPosition="left">
                         <p-inputicon class="pi pi-search" />
-                        <input pInputText placeholder="Rechercher client, mode de paiement…" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
+                        <input pInputText placeholder="Rechercher client, gérant, mode…" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
                     </p-iconfield>
                 </ng-template>
             </p-toolbar>
             <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <p-table [value]="filteredPaiements()" [paginator]="true" [rows]="10">
                     <ng-template #header>
-                        <tr><th>Date</th><th>Client</th><th>Montant</th><th>Mode</th><th>Référence</th><th>Actions</th></tr>
+                        <tr>
+                            <th>Date</th>
+                            <th>Client</th>
+                            @if (!auth.isClient()) { <th>Gérant encaisseur</th> }
+                            <th>Montant</th>
+                            <th>Mode</th>
+                            <th>Référence</th>
+                            <th>Actions</th>
+                        </tr>
                     </ng-template>
                     <ng-template #body let-p>
                         <tr>
                             <td>{{ p.datePaiement | date:'dd/MM/yyyy HH:mm' }}</td>
                             <td>{{ p.clientNom }}</td>
+                            @if (!auth.isClient()) { <td>{{ p.gerantNom || '-' }}</td> }
                             <td class="font-bold text-slate-800">{{ p.montant | number }} FCFA</td>
                             <td>
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
@@ -125,12 +138,13 @@ import { ModePaiement, Paiement, Reservation } from '@/app/core/models/cmt.model
                             </td>
                             <td>{{ p.reference || '-' }}</td>
                             <td>
-                                <p-button icon="pi pi-file-pdf" [rounded]="true" [text]="true" (onClick)="facture(p.reservationId)" pTooltip="Télécharger la facture PDF" tooltipPosition="top" />
+                                <p-button icon="pi pi-file-pdf" [rounded]="true" [text]="true" (onClick)="recu(p.reservationId)"
+                                    pTooltip="Reçu client (PDF)" tooltipPosition="top" />
                             </td>
                         </tr>
                     </ng-template>
                     <ng-template #emptymessage>
-                        <tr><td colspan="6" class="text-center py-8 text-slate-400">Aucun paiement enregistré</td></tr>
+                        <tr><td [attr.colspan]="auth.isClient() ? 6 : 7" class="text-center py-8 text-slate-400">Aucun paiement enregistré</td></tr>
                     </ng-template>
                 </p-table>
             </div>
@@ -209,6 +223,7 @@ export class Paiements implements OnInit {
         if (!q) return this.paiements();
         return this.paiements().filter(p =>
             (p.clientNom || '').toLowerCase().includes(q) ||
+            (p.gerantNom || '').toLowerCase().includes(q) ||
             (p.modePaiement || '').toLowerCase().includes(q) ||
             (p.reference || '').toLowerCase().includes(q)
         );
@@ -236,9 +251,7 @@ export class Paiements implements OnInit {
         return ['ORANGE_MONEY','MOOV_MONEY','WAVE','CORIS_MONEY','TELECEL_MONEY'].includes(this.form.modePaiement ?? '');
     }
 
-    onModeChange() {
-        this.form.telephone = '';
-    }
+    onModeChange() { this.form.telephone = ''; }
 
     totalEncaisse() { return this.paiements().reduce((s, p) => s + p.montant, 0); }
     moyennePaiement() {
@@ -253,6 +266,47 @@ export class Paiements implements OnInit {
             MOBILE_MONEY: 'Mobile Money'
         };
         return map[m] ?? m;
+    }
+
+    exportBilanExcel() {
+        const data = this.paiements();
+        const header = [
+            'Date', 'Client', 'Gérant encaisseur', 'Chambre',
+            'Montant (FCFA)', 'Mode de paiement', 'Référence',
+            'Date sortie réelle', 'Mois', 'Année'
+        ];
+        const rows = data.map(p => {
+            const d = new Date(p.datePaiement);
+            return [
+                d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                p.clientNom || '',
+                p.gerantNom || '-',
+                p.chambreNumero || '',
+                p.montant,
+                this.modeLabel(p.modePaiement),
+                p.reference || '',
+                p.dateSortieReelle || '',
+                this.moisLabel(d.getMonth() + 1),
+                d.getFullYear()
+            ];
+        });
+
+        // Ligne de total
+        const total = data.reduce((s, p) => s + p.montant, 0);
+        const ligneTotal = ['', '', '', 'TOTAL', total, '', '', '', '', ''];
+
+        const csvContent = [header, ...rows, [], ligneTotal]
+            .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+            .join('\n');
+
+        const bom = '\uFEFF';
+        const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `encaissements-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     ngOnInit() { this.load(); }
@@ -299,11 +353,11 @@ export class Paiements implements OnInit {
         });
     }
 
-    facture(reservationId: number) {
+    recu(reservationId: number) {
         this.paiementService.telechargerFacture(reservationId).subscribe((blob) => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = `facture-${reservationId}.pdf`; a.click();
+            a.href = url; a.download = `recu-client-${reservationId}.pdf`; a.click();
             URL.revokeObjectURL(url);
         });
     }

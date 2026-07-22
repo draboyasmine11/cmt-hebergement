@@ -11,9 +11,27 @@ import java.util.List;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
-    List<Reservation> findByUtilisateurIdOrderByDateReservationDesc(Long utilisateurId);
+    @Query("""
+            SELECT r FROM Reservation r
+            JOIN FETCH r.chambre ch
+            JOIN FETCH ch.centre
+            JOIN FETCH r.utilisateur
+            LEFT JOIN FETCH r.paiement
+            WHERE r.utilisateur.id = :utilisateurId
+            ORDER BY r.dateReservation DESC
+            """)
+    List<Reservation> findByUtilisateurIdOrderByDateReservationDesc(@Param("utilisateurId") Long utilisateurId);
 
-    List<Reservation> findByChambreCentreIdOrderByDateReservationDesc(Long centreId);
+    @Query("""
+            SELECT r FROM Reservation r
+            JOIN FETCH r.chambre ch
+            JOIN FETCH ch.centre
+            JOIN FETCH r.utilisateur
+            LEFT JOIN FETCH r.paiement
+            WHERE ch.centre.id = :centreId
+            ORDER BY r.dateReservation DESC
+            """)
+    List<Reservation> findByChambreCentreIdOrderByDateReservationDesc(@Param("centreId") Long centreId);
 
     long countByChambreId(Long chambreId);
 
@@ -70,6 +88,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             JOIN FETCH r.chambre ch
             JOIN FETCH ch.centre
             JOIN FETCH r.utilisateur
+            LEFT JOIN FETCH r.paiement
             WHERE r.id = :id
             """)
     java.util.Optional<Reservation> findByIdWithDetails(@Param("id") Long id);

@@ -19,6 +19,7 @@ public class PaiementResponse {
     private String reference;
     private Long reservationId;
     private String clientNom;
+    private String gerantNom;
     private String chambreNumero;
     private String chambreType;
     private LocalDate dateSortieReelle;

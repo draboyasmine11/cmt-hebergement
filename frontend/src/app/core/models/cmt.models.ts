@@ -129,6 +129,7 @@ export interface Paiement {
     reference?: string;
     reservationId: number;
     clientNom?: string;
+    gerantNom?: string;
     chambreNumero?: string;
     chambreType?: string;
     dateSortieReelle?: string;

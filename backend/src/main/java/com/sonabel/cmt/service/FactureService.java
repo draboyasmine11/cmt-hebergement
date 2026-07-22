@@ -2,15 +2,24 @@ package com.sonabel.cmt.service;
 
 import com.sonabel.cmt.entity.Paiement;
 import com.sonabel.cmt.entity.Reservation;
+import com.sonabel.cmt.entity.Utilisateur;
+import com.sonabel.cmt.enums.RoleType;
 import com.sonabel.cmt.exception.BusinessException;
 import com.sonabel.cmt.exception.ResourceNotFoundException;
 import com.sonabel.cmt.repository.PaiementRepository;
 import com.sonabel.cmt.repository.ReservationRepository;
+import com.sonabel.cmt.repository.UtilisateurRepository;
 import com.lowagie.text.*;
+import com.lowagie.text.Font;
 import com.lowagie.text.pdf.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.util.List;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
@@ -27,6 +36,7 @@ public class FactureService {
 
     private final PaiementRepository paiementRepository;
     private final ReservationRepository reservationRepository;
+    private final UtilisateurRepository utilisateurRepository;
 
     private static final Color NAVY        = new Color(13, 36, 79);
     private static final Color GOLD        = new Color(218, 165, 32);
@@ -40,7 +50,7 @@ public class FactureService {
 
     @Transactional(readOnly = true)
     public byte[] genererFacture(Long reservationId) {
-        Reservation r = reservationRepository.findById(reservationId)
+        Reservation r = reservationRepository.findByIdWithDetails(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Réservation introuvable"));
 
         Paiement p = paiementRepository.findByReservationId(reservationId)
@@ -62,6 +72,15 @@ public class FactureService {
             Font fValue     = FontFactory.getFont(FontFactory.HELVETICA, 8, DARK_TEXT);
             Font fFacture   = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, WHITE);
             Font fNumFac    = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, GOLD);
+
+            // Récupérer le gérant du centre
+            String nomGerant = "Le Responsable du Centre";
+            List<Utilisateur> gerants = utilisateurRepository.findGerantsByCentreId(
+                    r.getChambre().getCentre().getId());
+            if (!gerants.isEmpty()) {
+                Utilisateur g = gerants.get(0);
+                nomGerant = g.getPrenom() + " " + g.getNom();
+            }
             Font fTotalTTC  = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, WHITE);
             Font fGreen     = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, GREEN_PAY);
             Font fArrete    = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, NAVY);
@@ -132,20 +151,20 @@ public class FactureService {
             sep.addCell(sepCell);
             doc.add(sep);
 
-            // ── FACTURE + dates ────────────────────────────────────────────
+            // ── REÇU + dates ────────────────────────────────────────────
             PdfPTable facRow = new PdfPTable(2);
             facRow.setWidthPercentage(100);
             facRow.setWidths(new float[]{50f, 50f});
             facRow.setSpacingAfter(8);
 
-            // Bloc gauche : FACTURE + numéro
+            // Bloc gauche : REÇU + numéro
             PdfPCell cellFacLeft = new PdfPCell();
             cellFacLeft.setBorder(Rectangle.NO_BORDER);
             cellFacLeft.setPadding(0);
 
             PdfPTable facLabel = new PdfPTable(1);
             facLabel.setWidthPercentage(55);
-            PdfPCell fl = new PdfPCell(new Phrase("FACTURE", fFacture));
+            PdfPCell fl = new PdfPCell(new Phrase("REÇU", fFacture));
             fl.setBackgroundColor(NAVY);
             fl.setPadding(8);
             fl.setBorder(Rectangle.NO_BORDER);
@@ -154,7 +173,7 @@ public class FactureService {
 
             String annee = String.valueOf(r.getDateReservation().getYear());
             String mois  = String.format("%02d", r.getDateReservation().getMonthValue());
-            String numFac = String.format("FAC-%s-%s-%04d", annee, mois, r.getId());
+            String numFac = String.format("REC-%s-%s-%04d", annee, mois, r.getId());
             Paragraph numP = new Paragraph("N° " + numFac,
                     FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, GOLD));
             numP.setSpacingBefore(4);
@@ -317,7 +336,7 @@ public class FactureService {
             PdfPCell arreteCell = new PdfPCell();
             arreteCell.setBorder(Rectangle.NO_BORDER);
             arreteCell.setPaddingLeft(16);
-            Paragraph arreteTitle = new Paragraph("ARRÊTÉ LA PRÉSENTE FACTURE À LA SOMME DE :", fArrete);
+            Paragraph arreteTitle = new Paragraph("ARRÊTÉ LE PRÉSENT REÇU À LA SOMME DE :", fArrete);
             arreteTitle.setSpacingAfter(6);
             arreteCell.addElement(arreteTitle);
             Paragraph montantLettre = new Paragraph(montantEnLettres(total) + " (" + formatMontant(total) + ") FCFA", fMontantL);
@@ -343,7 +362,8 @@ public class FactureService {
             PdfPCell sigGerant = new PdfPCell();
             sigGerant.setBorder(Rectangle.NO_BORDER);
             sigGerant.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            sigGerant.addElement(new Paragraph("Le Responsable du Centre", fSmallB));
+            sigGerant.addElement(new Paragraph("Le Gérant", fSmallB));
+            sigGerant.addElement(new Paragraph(nomGerant, fSmall));
             sigGerant.addElement(new Paragraph("\n\n_______________", fSmall));
             sigGerant.addElement(new Paragraph("(Signature et cachet)", fSmall));
             sigTable.addCell(sigGerant);
@@ -371,7 +391,140 @@ public class FactureService {
             return baos.toByteArray();
 
         } catch (Exception e) {
-            throw new BusinessException("Erreur lors de la génération de la facture : " + e.getMessage());
+            throw new BusinessException("Erreur lors de la génération du reçu : " + e.getMessage());
+        }
+    }
+
+    // ── Export Excel ──────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public byte[] exporterExcel(Long centreId) {
+        List<Paiement> paiements = paiementRepository.findByReservationChambreCentreIdOrderByDatePaiementDesc(centreId);
+
+        // Récupérer le gérant du centre
+        String nomGerant = "-";
+        List<Utilisateur> gerants = utilisateurRepository.findGerantsByCentreId(centreId);
+        if (!gerants.isEmpty()) {
+            Utilisateur g = gerants.get(0);
+            nomGerant = g.getPrenom() + " " + g.getNom();
+        }
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
+
+            Sheet sheet = workbook.createSheet("Reçus");
+
+            // Style en-tête
+            CellStyle headerStyle = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            // Style données alternées
+            CellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setBorderBottom(BorderStyle.THIN);
+            dataStyle.setBorderLeft(BorderStyle.THIN);
+            dataStyle.setBorderRight(BorderStyle.THIN);
+
+            CellStyle dataStyleAlt = workbook.createCellStyle();
+            dataStyleAlt.cloneStyleFrom(dataStyle);
+            dataStyleAlt.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
+            dataStyleAlt.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            // Ligne titre
+            Row titleRow = sheet.createRow(0);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue("LISTE DES REÇUS - Centre d'Hébergement CMT");
+            CellStyle titleStyle = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.Font titleFont = workbook.createFont();
+            titleFont.setBold(true);
+            titleFont.setFontHeightInPoints((short) 14);
+            titleStyle.setFont(titleFont);
+            titleCell.setCellStyle(titleStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 8));
+
+            // Ligne gérant
+            Row gerantRow = sheet.createRow(1);
+            gerantRow.createCell(0).setCellValue("Gérant : " + nomGerant);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(1, 1, 0, 8));
+
+            // Ligne date d'export
+            Row dateRow = sheet.createRow(2);
+            dateRow.createCell(0).setCellValue("Date d'export : " + java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(2, 2, 0, 8));
+
+            // En-têtes colonnes
+            String[] cols = {"N° Reçu", "Client", "Matricule", "Chambre", "Centre", "Date paiement", "Mode paiement", "Référence", "Montant (FCFA)"};
+            Row headerRow = sheet.createRow(4);
+            for (int i = 0; i < cols.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(cols[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // Données
+            int rowIdx = 5;
+            for (Paiement p : paiements) {
+                Row row = sheet.createRow(rowIdx);
+                CellStyle style = (rowIdx % 2 == 0) ? dataStyleAlt : dataStyle;
+
+                String annee2 = String.valueOf(p.getDatePaiement().getYear());
+                String mois2  = String.format("%02d", p.getDatePaiement().getMonthValue());
+                String numRec = String.format("REC-%s-%s-%04d", annee2, mois2, p.getReservation().getId());
+
+                String clientNom = p.getReservation().getUtilisateur().getPrenom() + " " + p.getReservation().getUtilisateur().getNom();
+                String matricule2 = p.getReservation().getUtilisateur().getMatricule() != null ? p.getReservation().getUtilisateur().getMatricule() : "-";
+                String chambre2 = p.getReservation().getChambre().getNumero();
+                String centre2 = p.getReservation().getChambre().getCentre().getNom();
+                String datePay = p.getDatePaiement().format(FMT);
+                String mode = modeLabel(p.getModePaiement().name());
+                String ref = p.getReference() != null ? p.getReference() : "-";
+
+                String[] values = {numRec, clientNom, matricule2, chambre2, centre2, datePay, mode, ref, ""};
+                for (int i = 0; i < values.length - 1; i++) {
+                    Cell c2 = row.createCell(i);
+                    c2.setCellValue(values[i]);
+                    c2.setCellStyle(style);
+                }
+                // Montant (numérique)
+                Cell montantCell = row.createCell(8);
+                montantCell.setCellValue(p.getMontant() != null ? p.getMontant().doubleValue() : 0);
+                montantCell.setCellStyle(style);
+
+                rowIdx++;
+            }
+
+            // Ligne total
+            Row totalRow = sheet.createRow(rowIdx + 1);
+            CellStyle totalStyle = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.Font totalFont = workbook.createFont();
+            totalFont.setBold(true);
+            totalStyle.setFont(totalFont);
+            totalStyle.setFillForegroundColor(IndexedColors.GOLD.getIndex());
+            totalStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            Cell totalLabel = totalRow.createCell(7);
+            totalLabel.setCellValue("TOTAL");
+            totalLabel.setCellStyle(totalStyle);
+            Cell totalVal = totalRow.createCell(8);
+            double total = paiements.stream().mapToDouble(p -> p.getMontant() != null ? p.getMontant().doubleValue() : 0).sum();
+            totalVal.setCellValue(total);
+            totalVal.setCellStyle(totalStyle);
+
+            // Auto-size colonnes
+            for (int i = 0; i < cols.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(baos);
+            return baos.toByteArray();
+
+        } catch (Exception e) {
+            throw new BusinessException("Erreur lors de l'export Excel : " + e.getMessage());
         }
     }
 

@@ -23,9 +23,18 @@ import { Paiement } from '@/app/core/models/cmt.models';
         <div class="flex flex-col gap-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-extrabold text-slate-800">Factures</h1>
-                    <p class="text-sm text-slate-500 mt-1">Gestion des factures et génération de documents.</p>
+                    <h1 class="text-2xl font-extrabold text-slate-800">Reçus</h1>
+                    <p class="text-sm text-slate-500 mt-1">Gestion des reçus et génération de documents.</p>
                 </div>
+                <p-button
+                    label="Exporter Excel"
+                    icon="pi pi-file-excel"
+                    severity="success"
+                    [outlined]="false"
+                    pTooltip="Exporter tous les reçus en fichier Excel"
+                    tooltipPosition="left"
+                    (onClick)="exporterExcel()"
+                    [loading]="exportLoading()" />
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -52,7 +61,7 @@ import { Paiement } from '@/app/core/models/cmt.models';
                         <i class="pi pi-file-pdf text-xl"></i>
                     </div>
                     <div>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Factures PDF</span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Reçus PDF</span>
                         <span class="text-xl font-extrabold text-slate-800">{{ paiements().length }}</span>
                     </div>
                 </div>
@@ -73,7 +82,7 @@ import { Paiement } from '@/app/core/models/cmt.models';
                     <p-table [value]="filteredPaiements()" [paginator]="true" [rows]="10" dataKey="id">
                         <ng-template #header>
                             <tr>
-                                <th>Réf. paiement</th>
+                                <th>Réf. reçu</th>
                                 <th>Client</th>
                                 <th>Chambre</th>
                                 <th>Période</th>
@@ -99,14 +108,14 @@ import { Paiement } from '@/app/core/models/cmt.models';
                                 <td>
                                     <div class="flex gap-1">
                                         <p-button icon="pi pi-file-pdf" [rounded]="true" [text]="true"
-                                            pTooltip="Télécharger facture PDF" tooltipPosition="top"
-                                            (onClick)="telechargerFacture(p.reservationId)" />
+                                            pTooltip="Télécharger reçu PDF" tooltipPosition="top"
+                                            (onClick)="telechargerRecu(p.reservationId)" />
                                     </div>
                                 </td>
                             </tr>
                         </ng-template>
                         <ng-template #emptymessage>
-                            <tr><td colspan="8" class="text-center py-8 text-slate-400">Aucun paiement enregistré.</td></tr>
+                            <tr><td colspan="8" class="text-center py-8 text-slate-400">Aucun reçu enregistré.</td></tr>
                         </ng-template>
                     </p-table>
                 </div>
@@ -123,6 +132,7 @@ export class Factures implements OnInit {
     paiements = signal<Paiement[]>([]);
     loading = signal(true);
     searchQuery = signal('');
+    exportLoading = signal(false);
 
     filteredPaiements = computed(() => {
         const q = this.searchQuery().toLowerCase().trim();
@@ -148,19 +158,46 @@ export class Factures implements OnInit {
         }
     }
 
-    telechargerFacture(reservationId: number) {
+    telechargerRecu(reservationId: number) {
         this.paiementService.telechargerFacture(reservationId).subscribe({
             next: (blob) => {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `facture-reservation-${reservationId}.pdf`;
+                a.download = `recu-reservation-${reservationId}.pdf`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             },
-            error: () => this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de télécharger la facture.' })
+            error: () => this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de télécharger le reçu.' })
+        });
+    }
+
+    exporterExcel() {
+        const centreId = this.auth.user()?.centreId ?? this.centreActif.centreActif()?.id;
+        if (!centreId) {
+            this.messageService.add({ severity: 'warn', summary: 'Attention', detail: 'Aucun centre sélectionné.' });
+            return;
+        }
+        this.exportLoading.set(true);
+        this.paiementService.exporterExcel(centreId).subscribe({
+            next: (blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `recus-centre-${centreId}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                this.exportLoading.set(false);
+                this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Export Excel téléchargé avec succès.' });
+            },
+            error: () => {
+                this.exportLoading.set(false);
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'exporter les reçus en Excel." });
+            }
         });
     }
 }
